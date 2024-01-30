@@ -248,7 +248,7 @@ export default function Draft({ navigation, route }) {
                 }
                 </ScrollView>
             </View>
-            <View>
+            <View style={{flex:1,justifyContent:'center',alignItems:'center'}}>
                 <Button title="Start New Survey" color='#39b24a' onPress={() => navigation.navigate('Survey', { itemId: itemID, Province: province, City: city, District: district, Tehsil: tehsil, DistrictCode: districtCode, LocationName: locationName, TehsilCode: tehsilCode, Chargecode: chargeCode, assignment_moodifiedID: assignment_moodifiedID,latitude:latitude,longitude:longitude, AssignID:AssignID})} />
             </View>
         </>

@@ -128,15 +128,15 @@ const LogoutHandling = async () => {
                       <FeatherIcon name='menu' size={33} color='white' style={styles.MenuIcon} />
                     </Pressable>;
                   }}>
-                    <Menu.Item onPress={() => navigation.navigate('DashboardScreen')} style={{ width: '100%', height: '30%', borderRadius: 5, marginBottom: 10 }}>
+                    <Menu.Item onPress={() => navigation.navigate('DashboardScreen')} style={{ width: '100%', height: '35%', borderRadius: 5, marginBottom: 10 }}>
                       <ProjectIcon name='project' size={20} />
                       <Text style={{ fontSize: 15, fontWeight: '500' }}> Project</Text>
                     </Menu.Item>
-                    <Menu.Item onPress={() => navigation.navigate('Performance')} style={{ width: '100%', height: '25%', borderRadius: 5, marginBottom: 10, }}>
+                    <Menu.Item onPress={() => navigation.navigate('Performance')} style={{ width: '100%', height: '30%', borderRadius: 5, marginBottom: 10, }}>
                       <PerformanceIcon name='presentation' size={20} />
                       <Text style={{ fontSize: 15, fontWeight: '500' }}>Performance</Text>
                     </Menu.Item>
-                    <Menu.Item onPress={() => navigation.navigate('Message')} style={{ width: '100%', height: '25%', borderRadius: 5, marginBottom: 10 }}>
+                    <Menu.Item onPress={() => navigation.navigate('Message')} style={{ width: '100%', height: '30%', borderRadius: 5, marginBottom: 10 }}>
                       <MessageIcon name='message1' size={20} />
                       <Text style={{ fontSize: 15, fontWeight: '500' }}> Message</Text>
                     </Menu.Item>
@@ -170,6 +170,43 @@ const LogoutHandling = async () => {
             </View>
           </NativeBaseProvider>
         </View>
+        <View style={styles.cardContainer}>
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('svrdraft');
+              }}
+            >
+              <Text style={{color:'blue', fontSize:14,fontWeight:'700'}}>PR00234</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20 }}>SVR Survey</Text>
+            <View>
+              <Text style={{ borderBottomWidth: 0.5, borderColor: 'lightgrey', fontWeight: '700', marginBottom: 10, fontSize: 14 }}>
+                Start Date: 24-01-2023
+              </Text>
+              <Text style={{ fontWeight: '500', borderBottomWidth: 0.5, borderColor: 'lightgrey', marginBottom: 10, fontSize: 14 }}>
+                Assignment: 01
+              </Text>
+              <Text style={{ fontWeight: '500', fontSize: 14 }}>Total Outlet: 0</Text>
+              <View style={{flexDirection:'row', justifyContent:'space-between'}}>
+                <View>
+                  <Text>Outlets Completed:<Text style={{ color: 'green', marginBottom: 15, fontWeight: '500', fontSize: 14 }}>0</Text> </Text>
+                </View>
+                <View>
+                  <Text>Outlets Terminated:<Text style={{ color: 'green', marginBottom: 15, fontWeight: '500', fontSize: 14 }} >0</Text></Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 }}>
+                <View>
+                  <TouchableOpacity>
+                    <Text>Draft:<Text style={{ color: 'red', marginBottom: 15, fontWeight: '500', fontSize: 14 }}>0</Text></Text>
+                  </TouchableOpacity>
+                </View>
+                <View>
+                  <Text>Published:<Text style={{ color: 'green', marginBottom: 15, fontWeight: '500', fontSize: 14 }}>0</Text></Text>
+                </View>
+              </View>
+            </View>
+            </TouchableOpacity>
+          </View>
         {DashboardData.length > 0 ?  (DashboardData.map((item) => (
           <View style={styles.cardContainer} key={item.id}>
             <TouchableOpacity
@@ -211,8 +248,8 @@ const LogoutHandling = async () => {
           </View>
         ))): <ActivityIndicator size="large" style={{marginTop:250, alignSelf:'center'}} />
       } 
+     
       </ScrollView>
-
 
     </>
   );

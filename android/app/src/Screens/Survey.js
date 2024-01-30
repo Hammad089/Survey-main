@@ -17,6 +17,7 @@ import { addDoc, updateDoc, doc, getDoc, collection,deleteDoc } from "firebase/f
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import CheckBox from '@react-native-community/checkbox';
 import { useToast } from "react-native-toast-notifications";
+import Icon from 'react-native-vector-icons/FontAwesome';
 const requestLocationPermission = async () => {
   try {
     const granted = await PermissionsAndroid.request(
@@ -322,7 +323,7 @@ export default function Survey({ navigation }) {
     try {
       const token = await AsyncStorage.getItem('token');
       console.log('outlet in image storage', outletID);
-      console.log('field id in store image', fieldId);
+      console.log('D id in store image', fieldId);
       console.log('Image url is in Store image api', ImgUrl)
 
       if (!token) {
@@ -441,7 +442,6 @@ export default function Survey({ navigation }) {
       console.error('Start Time is null');
       return;
     }
-  
     const today = new Date();
     const date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
     const time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
@@ -664,7 +664,7 @@ export default function Survey({ navigation }) {
           </View>
         </NativeBaseProvider>
       </View>
-      <View style={styles.container}>
+      {/* <View style={styles.container}>
         <View style={{ flexDirection: 'row', }}>
           <Text style={{ fontWeight: '700', fontSize: 20, color: 'blue' }}>Province:</Text>
           <Text style={{ marginLeft: 50, marginTop: 5 }}>{province}</Text>
@@ -697,8 +697,8 @@ export default function Survey({ navigation }) {
           <Text style={{ fontWeight: '700', fontSize: 20, color: 'blue' }}>Circle:</Text>
           <Text style={{ marginLeft: 85 }}>{locationName}</Text>
         </View>
-      </View>
-      <ScrollView style={{ marginTop: 15 }} showsVerticalScrollIndicator={false}>
+      </View> */}
+      <ScrollView style={{ marginTop: 15,height:'100%' }} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
           {/* <View>
             {questions.map((item, index) => renderQuestion(item, index))}
@@ -777,13 +777,44 @@ export default function Survey({ navigation }) {
               return (
                 <View key={item.field_id}>
                 <Text style={styles.label}>{item.label_text}</Text>
+                {/* <Dropdown
+                  placeholder="Select an option..."
+                  options={optiondata}
+                  selectedValue={country}
+                  onValueChange={(selectedOption) => {
+                    handleShopTypeChange(selectedOption.value);
+                    handleChangeAnswer(index, selectedOption.value);
+                  }}
+                  primaryColor={'green'}
+                /> */}
                 <RadioButtonRN
+                style={{
+                  marginBottom:15
+                }}
+                icon={
+                  <Icon
+                    name="check-circle"
+                    size={25}
+                    color="#2c9dd1"
+                  />
+                }
                   data={optiondata}
+                  circleSize={20}
+                  textStyle={{
+                    fontSize:18,
+                    color:'darkblack'
+                  }}
+                  boxActiveBgColor={'#e1f5fe33'}
+                  activeColor={'#03a9f4'}
                   selectedBtn={(selectedOption) => {
                     handleShopTypeChange(selectedOption.value);
                     handleChangeAnswer(index, selectedOption.value);
                   }}
-                  box={false}
+                  box={true}
+                  boxStyle={{
+                    borderColor:'black'
+                  }}
+                  textColor={'#383838'}
                 />
               </View>
               );
@@ -857,7 +888,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingHorizontal: 20,
     padding: 15,
-    marginTop: 10,
+    height:'100%',
     shadowColor: 'black',
     shadowOffset: {
       width: 0,
@@ -891,7 +922,7 @@ const styles = StyleSheet.create({
 
   },
   label: {
-    fontSize: 16,
+    fontSize: 18,
     marginBottom: 5,
     fontWeight: 'bold'
   },

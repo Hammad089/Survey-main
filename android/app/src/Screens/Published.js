@@ -1,11 +1,21 @@
-import { View, Text, Button, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, Button, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 export default function Published({ navigation, route }) {
   const [data, setData] = useState([]);
-  const { itemID, province, city, tehsil, district, districtCode, locationName, tehsilCode, chargeCode, assignment_moodifiedID,AssignID,latitude,longitude,geomapId } = route.params;
-  console.log('data from  circle 104', province, city, tehsil, district, districtCode, locationName, chargeCode, assignment_moodifiedID,AssignID,latitude,longitude,geomapId);
+  const [refreshing, setRefreshing] = useState(false)
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000)
+  }
+
+  const { itemID, province, city, tehsil, district, districtCode, locationName, tehsilCode, chargeCode, assignment_moodifiedID, AssignID, latitude, longitude, geomapId } = route.params;
+  console.log('data from  circle 104', province, city, tehsil, district, districtCode, locationName, chargeCode, assignment_moodifiedID, AssignID, latitude, longitude, geomapId);
   const publishDataApiURl = `https://coralr.com/api/recent-outlets?task_id=${itemID}&assignment_id=${AssignID}&geomap_id=${geomapId}`
   const fetchData = async () => {
     try {
@@ -28,10 +38,13 @@ export default function Published({ navigation, route }) {
   }, [itemID, AssignID, geomapId]);
   return (
     <>
-      <ScrollView>
+      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+        style={{ flex: 1 }}
+      />}>
         {
           data.length > 0 ? (data.map((item, index) => {
             return (
+
               <View style={styles.CardsContainer} key={item.id}>
                 <TouchableOpacity onPress={() => { }}>
                   <View style={{ flexDirection: 'row', columnGap: 10, borderColor: 'lightgrey' }}>
@@ -64,6 +77,7 @@ export default function Published({ navigation, route }) {
                   </View>
                 </View>
               </View>
+
             )
           })
           ) : (

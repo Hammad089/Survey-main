@@ -23,7 +23,9 @@ import Draft from './android/app/src/Screens/Draft';
 import DashboardScreen from './android/app/src/Screens/DashboardScreen';
 import PerfomanceScreen from './android/app/src/Screens/PerfomanceScreen';
 import MessageScreen from './android/app/src/Screens/MessageScreen';
+import HardCodedSurvey from './android/app/src/Screens/HardCodedSurvey';
 import { ToastProvider } from 'react-native-toast-notifications';
+import SvrDraftData from './android/app/src/Screens/SvrDraftData';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -52,6 +54,8 @@ export default function App() {
           <Stack.Screen name='Survey' component={Survey} />
           <Stack.Screen name='Performance' component={PerfomanceScreen} />
           <Stack.Screen name='Message' component={MessageScreen} />
+          <Stack.Screen name='hard-coded' component={HardCodedSurvey} />
+          <Stack.Screen name='svrdraft' component={SvrDraftData} />
          </Stack.Navigator>
       </NavigationContainer>
       </ToastProvider>
