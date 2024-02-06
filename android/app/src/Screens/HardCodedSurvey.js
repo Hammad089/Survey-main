@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Button, PermissionsAndroid, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Button, PermissionsAndroid, Alert, ActivityIndicator,Platform } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import Dropdown from 'react-native-input-select';
 import AttachmentIcon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -8,9 +8,11 @@ import Geolocation from 'react-native-geolocation-service';
 import haversine from 'haversine';
 import { useToast } from "react-native-toast-notifications";
 import axios from 'axios';
+import {request, PERMISSIONS} from 'react-native-permissions';
 import { db, storage } from '../../../../firebase/config';
 import { addDoc, collection, } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL, uploadString } from "firebase/storage";
+
 const requestLocationPermission = async () => {
     try {
         const granted = await PermissionsAndroid.request(
@@ -38,18 +40,18 @@ const requestLocationPermission = async () => {
 export default function HardCodedSurvey() {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
-    const [supervisorName, setSupetVisorName] = React.useState();
-    const [EnterSupervisorName, setEnterSupervisorName] = React.useState();
+    const [supervisorName, setSuperVisorName] = React.useState();
+    const [newsupervisorName,setNewSupervisiorName] = React.useState()
     const [supervisorCDARID, setsupervisorCDARID] = React.useState();
-    const [EnterSupervisorCDARID, setEnterSuperivisorCDARID] = React.useState();
+    const [newSupervisorCDARID,setNewSupervisorCDARID] = React.useState()
     const [auditorName, setauditorName] = React.useState();
-    const [EnterAuditorName, setEnterAuditorName] = React.useState();
+    const [newAuditorName,setNewAuditorName] = React.useState()
     const [auditorCDAR, setAuditorCDAR] = React.useState();
-    const [EnterAuditorCDARID, setEnterCDARID] = React.useState();
+   const [newAuditorCDAR,setNewAuditorCDAR] = React.useState();
     const [region, setRegion] = React.useState();
     const [cities, setCities] = React.useState();
     const [SMSId, setSMSId] = React.useState();
-    const [ShopType, setShoptype] = React.useState();
+    const [newSMSID,setNewSMSID] = React.useState();
     const [ShopName, setShopName] = React.useState();
     const [ImgUrl, setImgUrl] = useState(null);
     const [ImgUrl1, setImgUrl1] = useState(null);
@@ -110,7 +112,6 @@ export default function HardCodedSurvey() {
     const [SweetBiscuit, setSweetBiscuit] = useState();
     const [TeaInfusion, setTeaInfusion] = useState();
     const [Water, setWater] = useState();
-    const [ShopProfile, setShopProfile] = useState();
     const [insideImgUrl, setInsideImgUrl] = useState(null);
     const [PlanCompliance, setPlanCompliance] = useState();
     const [EnterPlanComplainceRecord, setEnterPlanComplianceRecord] = useState();
@@ -120,7 +121,6 @@ export default function HardCodedSurvey() {
     const [Comment, setComment] = useState();
     const [AuditorComment, setAuditorComment] = useState();
     const [gpsLocationImage, setGpsLocationImage] = useState(null);
-    const [EnterShopProfileRecord, setEnterShopRecord] = useState()
     const [location, setLocation] = useState(null);
     const [surveyId, setSurveyId] = useState();
     const [selectedShopType, setSelectedShopType] = useState(null)
@@ -129,7 +129,9 @@ export default function HardCodedSurvey() {
     const [EnterShopActualName, setEnterShopActualName] = useState();
     const [EnterMismatchShopName, setEnterMismatchShopName] = useState();
     const [EnterShopActualType, setEnterShopActualType] = useState();
-    const [EnterMismatchShopType, setEnterMismatchShopType] = useState()
+    const [EnterMismatchShopType, setEnterMismatchShopType] = useState();
+    const [newShopType,setNewShopType] = React.useState();
+    const [newShopName,setNewShopName] = React.useState();
     const filterUndefinedValues = (obj) => {
         const newObj = {};
         for (const key in obj) {
@@ -139,11 +141,15 @@ export default function HardCodedSurvey() {
         }
         return newObj;
     };
-    const storeDataAndImages = async () => {
+   
+     const storeDataAndImages = async () => {
         try {
+           
+            const previous_lat = findShopByLabel(ShopName)?.lat || '';
+            const previous_long = findShopByLabel(ShopName)?.long || '';
+    
             const filteredSurveyData = filterUndefinedValues({
                 supervisorName,
-                EnterSupervisorName,
                 supervisorCDARID,
                 auditorName,
                 auditorCDAR,
@@ -208,11 +214,22 @@ export default function HardCodedSurvey() {
                 WaterStockAvailibity,
                 Comment,
                 selectedShopType,
+                currentCoordinate,
+                previous_lat,
+                previous_long,
+                EnterShopActualName,
+                EnterMismatchShopName,
+                EnterShopActualType,
+                EnterMismatchShopType,
                 ShopNameActual,
                 ShopTypeActual,
-                currentCoordinate,
-                previous_lat: `${findShopByLabel(ShopName).lat}`,
-                previous_long: `${findShopByLabel(ShopName).long}`
+                newAuditorCDAR,
+                newAuditorName,
+                newSMSID,
+                newShopName,
+                newShopType,
+                newsupervisorName,
+                newSupervisorCDARID
             });
             const imageUrls = [
                 ImgUrl,
@@ -225,16 +242,33 @@ export default function HardCodedSurvey() {
                 ImgUrl5
             ].filter(url => url);
 
-            const dataToStore = {
-                surveyData: filteredSurveyData,
-                images: imageUrls,
-            };
-            await AsyncStorage.setItem('dataAndImages', JSON.stringify(dataToStore));
-            console.log('Data and images stored successfully', dataToStore);
-            Alert.alert('Survey Data upload Successfully')
-        } catch (error) {
-            console.error('Error storing data and images:', error);
+            const existingDataString = await AsyncStorage.getItem('dataAndImages');
+        let existingData = existingDataString ? JSON.parse(existingDataString) : { surveys: [] };
+        console.log('filteredSurveyData:', filteredSurveyData);
+        console.log('imageUrls:', imageUrls);
+        setLoading(true);
+        if (!existingData.surveys) {
+            existingData.surveys = [];
         }
+
+        const dataToStore = {
+            surveyData: filteredSurveyData,
+            images: imageUrls,
+        };
+        // Append the new survey data to the existing surveys
+        existingData.surveys.push(dataToStore);
+        // Store the updated data in AsyncStorage
+        await AsyncStorage.setItem('dataAndImages', JSON.stringify(existingData));
+        console.log('Data and images stored successfully', existingData);
+        resetForm();
+        Alert.alert('Survey Data upload Successfully');
+       
+    } catch (error) {
+        console.error('Error storing data and images:', error);
+    }
+    finally {
+        setLoading(false);
+    }
     };
     useEffect(() => {
         const getLocation = () => {
@@ -267,25 +301,16 @@ export default function HardCodedSurvey() {
         { label: 'KARACHI BIRYANI', value: 'KARACHI BIRYANI', lat: 33.5956638, long: 73.1291651 },
         { label: 'ABBASI GENERAL STORE', value: 'ABBASI GENERAL STORE', lat: 33.7381412, long: 73.17715514 },
     ];
-    const shops1 = [
-        { label: 'ALIYAN GENERAL STORE', value: 'ALIYAN GENERAL STORE', lat: 25.36704703, long: 68.29930637 },
-        { label: 'BABA G JUICE POINT', value: 'BABA G JUICE POINT', lat: 31.41370001, long: 73.11319018 },
-        { label: 'QUETTA AL FAREED CAFE', value: 'QUETTA AL FAREED CAFE', lat: 33.59879203, long: 33.59879203 },
-        { label: 'KARACHI BIRYANI', value: 'KARACHI BIRYANI', lat: 33.5956638, long: 73.1291651 },
-        { label: 'ABBASI GENERAL STORE', value: 'ABBASI GENERAL STORE', lat: 33.7381412, long: 73.17715514 },
-    ];
-
-
-
+  
     const currentCoordinate = {
         latitude: location ? location.coords.latitude : null,
         longitude: location ? location.coords.longitude : null
     }
 
-
     const findShopByLabel = (label) => {
         return shops.find(shop => shop.label === label);
     };
+    const shop = findShopByLabel(ShopName);
 
     useEffect(() => {
         const currentcoordinate1 = { latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude };
@@ -301,25 +326,19 @@ export default function HardCodedSurvey() {
         if (selectedShop) {
             const shopCoordinate = { latitude: selectedShop.lat, longitude: selectedShop.long };
             const matched = isLocationMatched(currentcoordinate1, shopCoordinate);
-
             setShopGPSLocation(matched ? 'Yes' : 'No');
             console.log('location matched ', matched);
         }
     }, [ShopName, currentCoordinate]);
     console.log('survey id', surveyId);
     const resetForm = () => {
-        setSupetVisorName('');
-        setEnterSupervisorName('');
+        setSuperVisorName('');
         setsupervisorCDARID('');
-        setEnterSuperivisorCDARID('');
         setauditorName('');
-        setEnterAuditorName('');
         setAuditorCDAR('');
-        setEnterCDARID('');
         setRegion('');
         setCities('');
         setSMSId('');
-        setShoptype('');
         setShopName('');
         setShopGPSLocation('No');
         setEnterShopGPSRecord('');
@@ -374,7 +393,6 @@ export default function HardCodedSurvey() {
         setSweetBiscuit('');
         setTeaInfusion('');
         setWater('');
-        setShopProfile('');
         setInsideImgUrl(null);
         setPlanCompliance('');
         setEnterPlanComplianceRecord('');
@@ -384,31 +402,69 @@ export default function HardCodedSurvey() {
         setComment('');
         setAuditorComment('');
         setGpsLocationImage(null);
-        setEnterShopRecord('');
-        setImgUrl(null);
-        setImgUrl1(null);
-        setImgUrl2(null);
-        setImgUrl3(null);
-        setImgUrl4(null);
-        setImgUrl5(null);
+        setShopNameActual('');
+        setShopTypeActual('');
+        setEnterShopActualName('');
+        setEnterMismatchShopName('');
+        setEnterShopActualType('');
+        setEnterMismatchShopType('');
+        setNewSupervisiorName('');
+        setNewSupervisorCDARID('');
+        setNewAuditorName('')
     };
     const uploadDataSvr = async () => {
         try {
+            const requiredFields = [
+                supervisorName,
+                auditorName,
+                region,
+                cities,
+                currentCoordinate.latitude,
+                currentCoordinate.longitude,
+                ControlType,
+                lineCheckofStock,
+                LinesCountedCorrectly,
+              ];
+              const isAnyFieldEmpty = requiredFields.some(field => !field);
+
+              if (isAnyFieldEmpty) {
+                Alert.alert('Please fill in all required fields');
+                return;
+               
+              }
             const token = await AsyncStorage.getItem('token');
-            setLoading(true);
+            setLoading(false);
             console.log('token in svr survey', token)
             const formdata = new FormData();
-            formdata.append('supervisor_name', supervisorName)
+            formdata.append('supervisor_name', supervisorName);
+            formdata.append('new_supervisor_name',newsupervisorName);
             formdata.append('supervisor_id', supervisorCDARID);
+            formdata.append('new_supervisor_id',newSupervisorCDARID)
             formdata.append('auditor_name', auditorName);
+            formdata.append('new_auditor_name',newAuditorName)
             formdata.append('auditor_id', auditorCDAR);
+            formdata.append('new_auditor_id',newAuditorCDAR)
             formdata.append('region', region);
             formdata.append('city', cities);
             formdata.append('shop_sms', SMSId);
+            formdata.append('new_shop_sms',newSMSID);
+            formdata.append('new_shoptype',newShopType);
+            formdata.append('new_shopname',newShopName)
             formdata.append('shop_type', selectedShopType);
             formdata.append('shop_name', ShopName);
-            formdata.append('previous_lat', `${findShopByLabel(ShopName).lat}`);
-            formdata.append('previous_long', `${findShopByLabel(ShopName).long}`);
+            if (shop) {
+                // If shop is found, append lat and long to formdata
+                if (typeof shop.lat !== 'undefined') {
+                    formdata.append('previous_lat', `${shop.lat}`);
+                }
+                if (typeof shop.long !== 'undefined') {
+                    formdata.append('previous_long', `${shop.long}`);
+                }
+            } else {
+                // Handle the case when shop is not found or lat/long is not defined
+                console.log('Shop not found or lat/long not defined');
+                // You can choose to handle this case in any way appropriate for your application
+            }
             formdata.append('current_lat', currentCoordinate.latitude);
             formdata.append('current_long', currentCoordinate.longitude);
             formdata.append('gps_location', ShopGPSLocation);
@@ -474,14 +530,20 @@ export default function HardCodedSurvey() {
             formdata.append("correct_answers", result3);
             formdata.append("supervisor_feedback", supervisorFeedback);
             formdata.append("auditor_comment", AuditorComment);
-            formdata.append("actshop_name", ShopNameActual),
-                formdata.append("actshop_type", ShopTypeActual)
+            formdata.append("actshop_name", EnterShopActualName);
+            formdata.append("matchshop_name",ShopNameActual);
+            formdata.append("name_mismatch_reason",EnterMismatchShopName)
+           formdata.append("actshop_type", EnterShopActualType);
+           formdata.append("matchshop_type", ShopTypeActual);
+           formdata.append('type_mismatch_reason',EnterMismatchShopType);
+           
+           
             console.log('form data ', formdata);
-            if (!ImgUrl) {
+            if (ShopNameActual === 'No' && !ImgUrl) {
                 Alert.alert('Front image is mandatory. Please take a picture before submitting.');
                 return;
             }
-            if (ShopProfile === 'No' && !insideImgUrl && ShopGPSLocation === 'No' && !gpsLocationImage) {
+            if ( ShopTypeActual=== 'No' && !insideImgUrl) {
                 Alert.alert('Inside picture and GPS Location picture are mandatory when ShopProfile and GPS Location are "No". Please take pictures before submitting.');
                 return;
             }
@@ -494,9 +556,7 @@ export default function HardCodedSurvey() {
             console.log(response.data);
             setSurveyId(response.data.survey_id)
             resetForm();
-            console.log('form data ', formdata);
-            Alert.alert('Survey Data upload Successfully')
-            console.log('form data ', formdata);
+            console.log('form data ', formdata)
 
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -509,35 +569,29 @@ export default function HardCodedSurvey() {
             setLoading(false);
         }
     }
-
     const storeImageAPIURL = 'https://coralr.com/api/svr-imageUpload'
     const uploadImage = async () => {
         try {
             const token = await AsyncStorage.getItem('token');
             setLoading(true);
-            if (!ImgUrl) {
+            if (ShopNameActual === 'No' && !ImgUrl) {
                 Alert.alert('Please take the front image before submitting.');
                 return;
             }
 
-            if (ShopProfile === 'No' && !insideImgUrl) {
+            if (ShopTypeActual === 'No' && !insideImgUrl) {
                 Alert.alert('Inside picture is mandatory when ShopProfile is "No". Please take a picture before submitting.');
                 return;
             }
-
-            if (ShopGPSLocation === 'No' && !gpsLocationImage) {
-                Alert.alert('GPS Location picture is mandatory when GPS Location is "No". Please take a picture before submitting.');
-                return;
-            }
-
             const formData = new FormData();
             formData.append('survey_id', surveyId);
-            formData.append('front_image', {
-                uri: ImgUrl,
-                type: 'image/jpeg',
-                name: 'image.jpg',
-            });
-
+            if(ImgUrl) {
+                formData.append('front_image', {
+                    uri: ImgUrl,
+                    type: 'image/jpeg',
+                    name: 'image.jpg',
+                });
+            }
             if (insideImgUrl) {
                 formData.append('inside_image', {
                     uri: insideImgUrl,
@@ -572,17 +626,17 @@ export default function HardCodedSurvey() {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-
+                console.log(response.data)
             if (response) {
                 console.log('Image upload was successful.');
-                Alert.alert('Image upload was successful.');
+                Alert.alert('Survey Data and Image Upload Successfuly');
             } else {
                 console.log('Image upload response is undefined.');
             }
 
         } catch (error) {
             console.log('Error in API request:', error.message);
-            console.log('API error details:', error.response?.data || 'No detailed error information available');
+            console.log('API error details:', error.response?.data );
         }
         finally {
             setLoading(false);
@@ -651,214 +705,223 @@ export default function HardCodedSurvey() {
 
 
     const handleSupervisorNameAndID = (value) => {
-        setSupetVisorName(value);
+        setSuperVisorName(value);
         setsupervisorCDARID(supervisorCDARIDMap[value])
     }
     const handleauditorNameAndID = (value) => {
         setauditorName(value);
         setAuditorCDAR(auditorCDARMap[value])
     }
-    const handleCameraLaunch = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
 
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage = result?.assets[0];
+   
+const requestForPermissionCamera = () => {
+    request(PERMISSIONS.ANDROID.CAMERA).then((result) => {
+      console.log(result)
+    });
+  };
 
-            if (pickedImage) {
-                setImgUrl(pickedImage.uri);
-                console.log('Image picked:', pickedImage);
-            } else {
-                console.log('No image picked');
-            }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
-    }
-    const handleCameraLaunch1 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
-
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage1 = result?.assets[0];
-
-            if (pickedImage1) {
-                setInsideImgUrl(pickedImage1.uri);
-                console.log('Image picked:', pickedImage1);
-            } else {
-                console.log('No image picked');
-            }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+  
+  const handleCameraLaunch = async() => {
+    if (Platform.OS === 'android') {
+       await requestForPermissionCamera();
+      }
+    const options = {
+      title: 'Take a photo',
+      storageOptions: {
+        skipBackup: true,
+        path: 'images',
+        saveToPhotos: true,
+      },
     };
+  
+    launchCamera(options, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled camera action');
+      } else if (response.errorCode) {
+        console.log('Camera Error:', response.errorMessage);
+      } else {
+        const pickedImage = response.assets[0];
+        setImgUrl(pickedImage.uri);
+        console.log('Image picked:', pickedImage);
+      }
+    });
+  };
+  
+  
+    const handleCameraLaunch1 = async () => {
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
+
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
+            } else {
+              const pickedImage = response.assets[0];
+              setInsideImgUrl(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
+            }
+          });
+        };
 
 
     const handleCameraLaunch2 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
-
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage2 = result?.assets[0];
-
-            if (pickedImage2) {
-                setGpsLocationImage(pickedImage2.uri);
-                console.log('Image picked:', pickedImage2);
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
+       
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setGpsLocationImage(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
-    };
+          });
+        };
     const handleCameraLaunch3 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
-
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage3 = result?.assets[0];
-
-            if (pickedImage3) {
-                setImgUrl1(pickedImage3.uri);
-                console.log('Image picked:', pickedImage3);
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setImgUrl1(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+          });
     };
     const handleCameraLaunch4 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
-
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage4 = result?.assets[0];
-
-            if (pickedImage4) {
-                setImgUrl2(pickedImage4.uri);
-                console.log('Image picked:', pickedImage4);
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setImgUrl2(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+          });
     };
     const handleCameraLaunch5 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
 
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage5 = result?.assets[0];
-
-            if (pickedImage5) {
-                setImgUrl3(pickedImage5.uri);
-                console.log('Image picked:', pickedImage5);
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setImgUrl3(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+          });
     };
     const handleCameraLaunch6 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
 
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage6 = result?.assets[0];
-
-            if (pickedImage6) {
-                setImgUrl4(pickedImage6.uri);
-                console.log('Image picked:', pickedImage6);
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setImgUrl4(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+          });
     };
     const handleCameraLaunch7 = async () => {
-        const options = {
-            title: 'Take a photo',
-            storageOptions: {
-                skipBackup: true,
-                path: 'images',
-                saveToPhotos: true,
-            },
-        };
+        if (Platform.OS === 'android') {
+            await requestForPermissionCamera();
+           }
+         const options = {
+           title: 'Take a photo',
+           storageOptions: {
+             skipBackup: true,
+             path: 'images',
+             saveToPhotos: true,
+           },
+         };
 
-        try {
-            console.log('PRESS ====>');
-            const result = await launchCamera({ saveToPhotos: true });
-            const pickedImage7 = result?.assets[0];
-
-            if (pickedImage7) {
-                setImgUrl5(pickedImage7.uri);
-                console.log('Image picked:', pickedImage7);
+         launchCamera(options, (response) => {
+            if (response.didCancel) {
+              console.log('User cancelled camera action');
+            } else if (response.errorCode) {
+              console.log('Camera Error:', response.errorMessage);
             } else {
-                console.log('No image picked');
+              const pickedImage = response.assets[0];
+              setImgUrl5(pickedImage.uri);
+              console.log('Image picked:', pickedImage);
             }
-        } catch (error) {
-            console.log('Error in Launching camera', error);
-        }
+          });
     };
     // const GpsLocationCapture = async () => {
     //     try {
@@ -927,12 +990,14 @@ export default function HardCodedSurvey() {
                                                 <TextInput
                                                     placeholder='Enter Name'
                                                     style={styles.input}
-                                                    value={supervisorName}
-                                                    onChangeText={(text) => setEnterSupervisorName(text)}
+                                                    value={newsupervisorName}
+                                                    onChangeText={(text) => {
+                                                        setNewSupervisiorName(text);
+                                                      }}
                                                 />
-                                            </View>
-                                        ) : null
-                                    }
+                                                </View>
+                                            ) : null}
+                        
                                 </View>
                                 <Text style={styles.label}>Supervisor CDAR ID</Text>
                                 <Dropdown
@@ -959,8 +1024,8 @@ export default function HardCodedSurvey() {
                                             <TextInput
                                                 placeholder='Enter Supervisor CDAR ID'
                                                 style={styles.input}
-                                                value={supervisorCDARID}
-                                                onChangeText={(text) => setEnterSuperivisorCDARID(text)}
+                                                value={newSupervisorCDARID}
+                                                onChangeText={(text) => setNewSupervisorCDARID(text)}
                                             />
                                         </View>
                                     ) : null
@@ -1023,8 +1088,8 @@ export default function HardCodedSurvey() {
                                                 <TextInput
                                                     placeholder='Enter Auditor Name'
                                                     style={styles.input}
-                                                    value={auditorName}
-                                                    onChangeText={(text) => setEnterAuditorName(text)}
+                                                    value={newAuditorName}
+                                                    onChangeText={(text) => setNewAuditorName(text)}
                                                 />
                                             </View>
                                         ) : null
@@ -1086,8 +1151,8 @@ export default function HardCodedSurvey() {
                                             <TextInput
                                                 placeholder='Enter Auditor CDAR ID'
                                                 style={styles.input}
-                                                value={auditorCDAR}
-                                                onChangeText={(text) => setEnterCDARID(text)}
+                                                value={newAuditorCDAR}
+                                                onChangeText={(text) => setNewAuditorCDAR(text)}
                                             />
                                         </View>
                                     ) : null
@@ -1140,8 +1205,8 @@ export default function HardCodedSurvey() {
                                             { label: 'MIRPUR KHAS', value: 'MIRPUR KHAS' },
                                             { label: 'Gujar Khan Mc', value: 'Gujar Khan Mc' },
                                             { label: 'MANDI BAHAUDDIN', value: 'MANDI BAHAUDDIN' },
-                                            { label: 'HYDERABAD', value: 'HYDERABAD' },
-                                            { label: 'MULTAN CITY', value: 'MULTAN CITY' },
+                                            { label: 'HYDERABAD', value: 'HYDERABAD'},
+                                            { label: 'MULTAN CITY', value: 'MULTAN CITY'},
                                             { label: 'ZHOB', value: 'ZHOB' },
                                             { label: 'SANGHAR', value: 'SANGHAR' },
                                             { label: 'HAFIZABAD', value: 'HAFIZABAD' },
@@ -1162,7 +1227,7 @@ export default function HardCodedSurvey() {
                                             { label: 'TALA GANG', value: 'TALA GANG' },
                                             { label: 'BAT KHELA MC', value: 'BAT KHELA MC' },
                                             { label: 'DERA ISMAIL KHAN', value: 'DERA ISMAIL KHAN' },
-                                            { label: 'JHANG', value: 'JHANG' },
+                                            { label: 'JHANG', value: 'JHANG'},
                                         ]}
                                         selectedValue={cities}
                                         onValueChange={(value) => setCities(value)}
@@ -1182,15 +1247,49 @@ export default function HardCodedSurvey() {
                                                 { label: 'PK00100007', value: 'PK00100007' },
                                                 { label: 'PK00100008', value: 'PK00100008' },
                                                 { label: 'PK00100010', value: 'PK00100010' },
+                                                {label: 'Not Availible', value: 'Not Availible'}
                                             ]
                                         }
                                         selectedValue={SMSId}
                                         onValueChange={(value) => setSMSId(value)}
                                         primaryColor={'green'}
                                     />
+                                    {
+                                        SMSId === 'Not Availible' ? (
+                                            <>
+                                            <Text style={styles.label}>Shop SMS ID</Text>
+                                            <TextInput
+                                            placeholder='Shop SMS ID'
+                                            style={styles.input}
+                                            selectedValue={newSMSID}
+                                            onValueChange={(value) => setNewSMSID(value)}
+                                        />
+                                          <Text style={styles.label}>Shop Type</Text>
+                                          <TextInput
+                                            placeholder='Shop Type'
+                                            multiline={true}
+                                            numberOfLines={10}
+                                            style={styles.input}
+                                            value={newShopType}
+                                            onChangeText={(text) => setNewShopType(text)}
+                                        />
+                                         <Text style={styles.label}>Shop Name </Text>
+                                         <TextInput
+                                            placeholder='Shop Name'
+                                            multiline={true}
+                                            numberOfLines={10}
+                                            style={styles.input}
+                                            selectedValue={newShopType}
+                                            onValueChange={(value) => setNewShopName(value)}
+                                        />
+                                        </>
+                                        ):null
+                                    }
                                 </View>
                             </View>
-                            <View style={styles.questionContainer1}>
+                         {
+                            SMSId === 'Not Availible' ? null : (
+                                <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Shop Type (Office Record)</Text>
                                     <Dropdown
@@ -1214,7 +1313,11 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                             </View>
-                            <View style={styles.questionContainer1}>
+                            )
+                         }
+                            {
+                                SMSId === 'Not Availible' ? null :(
+                                    <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Shop Name (Office Record)</Text>
                                     <Dropdown
@@ -1226,15 +1329,18 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                             </View>
-                            <View style={styles.questionContainer1}>
+                                )
+                            }
+                          {
+                            SMSId === 'Not Availible' ? null :(
+                                <View style={styles.questionContainer1}>
                                 <View>
-                                    <Text style={styles.label}>Shop Type (Actual)</Text>
+                                    <Text style={styles.label}>Shop type match with office record</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
                                             { label: 'Yes', value: 'Yes' },
                                             { label: 'No', value: 'No' },
-
                                         ]}
                                         selectedValue={ShopTypeActual}
                                         onValueChange={(value) => setShopTypeActual(value)}
@@ -1245,9 +1351,9 @@ export default function HardCodedSurvey() {
                                     ShopTypeActual === 'No' ? (
                                         <>
                                             <View>
-                                                <Text style={styles.label}>Shop type match with office record</Text>
+                                                <Text style={styles.label}>Shop Type (Actual)</Text>
                                                 <TextInput
-                                                    placeholder='Comment'
+                                                    placeholder='Shop Type'
                                                     multiline={true}
                                                     numberOfLines={10}
                                                     style={styles.input}
@@ -1266,23 +1372,28 @@ export default function HardCodedSurvey() {
                                             </View>
                                             <View>
                                                 <Text style={styles.label}>In case of Mismatch in Types shop inside picture </Text>
-                                                <Button title='Take Picture' onPress={handleCameraLaunch1} />
-                                                {/* <View>
-                                                    <TouchableOpacity onPress={handleCameraLaunch1} style={{ backgroundColor: '#0000FF', width: '50%',height:40, borderRadius: 10 }}>
-                                                        <View style={{ flexDirection: 'row', width: '100%',alignSelf:'center', justifyContent:'center', gap: 10, marginTop:8}}>
-                                                            <Text style={{ color: 'white', textAlign:'center',}}>Take Picture</Text>
-                                                        </View>
+                                                {/* <Button title='Take Picture' onPress={handleCameraLaunch1} /> */}
+                                                <View>
+                                                    <TouchableOpacity onPress={handleCameraLaunch1} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 10 }}>
+                                                    <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10 }}>
+                                                    <AttachmentIcon name='camera' size={20} color='#fff' />
+                                                    <Text style={{ color: 'white' }}>Take Picture</Text>
+                                                </View>
                                                     </TouchableOpacity>
-                                                </View> */}
+                                                </View>
                                                 <Text>{insideImgUrl}</Text>
                                             </View>
                                         </>
                                     ) : null
                                 }
                             </View>
-                            <View style={styles.questionContainer1}>
+                            )
+                          }
+                           {
+                            SMSId === 'Not Availible' ? null :(
+                                <View style={styles.questionContainer1}>
                                 <View>
-                                    <Text style={styles.label}>Shop Name(Actual)</Text>
+                                    <Text style={styles.label}>Shop Name match with office record</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
@@ -1296,9 +1407,9 @@ export default function HardCodedSurvey() {
                                     {ShopNameActual === 'No' ? (
                                         <>
                                             <View>
-                                                <Text style={styles.label}>Shop Name match with office record</Text>
+                                                <Text style={styles.label}>Shop Name (Actual)</Text>
                                                 <TextInput
-                                                    placeholder='Comment'
+                                                    placeholder='Shop Name'
                                                     multiline={true}
                                                     numberOfLines={10}
                                                     style={styles.input}
@@ -1316,15 +1427,15 @@ export default function HardCodedSurvey() {
                                                 />
                                             </View>
                                             <Text style={styles.label}>Shop Front Picture with signboard</Text>
-                                            <Button title='Take Picture' onPress={handleCameraLaunch} color={'#0000FF'} />
-                                            {/* <View style={styles.DocumentPickers}>
+                                            {/* <Button title='Take Picture' onPress={handleCameraLaunch} color={'#0000FF'} /> */}
+                                            <View style={styles.DocumentPickers}>
                                             <TouchableOpacity onPress={handleCameraLaunch} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                                 <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10 }}>
                                                     <AttachmentIcon name='camera' size={20} color='#fff' />
                                                     <Text style={{ color: 'white' }}>Take Picture</Text>
                                                 </View>
                                             </TouchableOpacity>
-                                        </View> */}
+                                        </View>
                                             <Text>{ImgUrl}</Text>
                                         </>
                                     ) : null
@@ -1332,6 +1443,8 @@ export default function HardCodedSurvey() {
                                 </View>
 
                             </View>
+                            )
+                           }
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Previous Coordinate</Text>
@@ -1355,7 +1468,9 @@ export default function HardCodedSurvey() {
                                 </View>
                             </View>
 
-                            <View style={styles.questionContainer1}>
+                            {
+                                SMSId === 'Not Availible' ? null : (
+                                    <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Shop on GPS Location</Text>
                                     <Dropdown
@@ -1385,21 +1500,23 @@ export default function HardCodedSurvey() {
                                             </View>
                                             <View>
                                                 <Text style={styles.label}>In case of Mismatch in GPS Location screenshot of current location </Text>
-                                                <Button title='Take Picture' onPress={handleCameraLaunch2} color={'#0000FF'} />
-                                                {/* <View style={styles.DocumentPickers}>
+                                                {/* <Button title='Take Picture' onPress={handleCameraLaunch2} color={'#0000FF'} /> */}
+                                                <View style={styles.DocumentPickers}>
                                                     <TouchableOpacity onPress={handleCameraLaunch2} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                                         <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                             <AttachmentIcon name='camera' size={20} color='#fff' />
                                                             <Text style={{ color: 'white' }}>Take Picture</Text>
                                                         </View>
                                                     </TouchableOpacity>
-                                                </View> */}
+                                                </View>
                                                 <Text>{gpsLocationImage}</Text>
                                             </View>
                                         </>
                                     ) : null
                                 }
                             </View>
+                                )
+                            }
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Plan Compliance(Is this shop is auditing on planned date?)</Text>
@@ -1410,7 +1527,7 @@ export default function HardCodedSurvey() {
                                             { label: 'No', value: 'No' },
                                         ]}
                                         selectedValue={PlanCompliance}
-                                        onValueChange={(value) => setPlanCompliance(value)}
+                                        onValueChange={(value)=>setPlanCompliance(value)}
                                         primaryColor={'green'}
                                     />
                                 </View>
@@ -1519,9 +1636,9 @@ export default function HardCodedSurvey() {
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
-                                            { label: 'Yes', value: 'Yes' },
-                                            { label: 'No', value: 'No' },
-                                            { label: 'NA', value: 'NA' },
+                                            { label: 'Yes', value: 'Yes'},
+                                            { label: 'No', value: 'No'},
+                                            { label: 'NA', value: 'NA'},
                                         ]}
                                         selectedValue={BabyHygeine}
                                         onValueChange={(value) => setBabyHygeine(value)}
@@ -1533,9 +1650,9 @@ export default function HardCodedSurvey() {
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
-                                            { label: 'Yes', value: 'Yes' },
-                                            { label: 'No', value: 'No' },
-                                            { label: 'NA', value: 'NA' },
+                                            { label: 'Yes', value: 'Yes'},
+                                            { label: 'No', value: 'No'},
+                                            { label: 'NA', value: 'NA'},
                                         ]}
                                         selectedValue={butterAmbidient}
                                         onValueChange={(value) => setButterAmbdient(value)}
@@ -1575,9 +1692,9 @@ export default function HardCodedSurvey() {
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
-                                            { label: 'Yes', value: 'Yes' },
-                                            { label: 'No', value: 'No' },
-                                            { label: 'NA', value: 'NA' },
+                                            { label: 'Yes', value: 'Yes'},
+                                            { label: 'No', value: 'No'},
+                                            { label: 'NA', value: 'NA'},
                                         ]}
                                         selectedValue={CheseAmbdient}
                                         onValueChange={(value) => setCheseAmbdient(value)}
@@ -1585,7 +1702,7 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                                 <View>
-                                    <Text style={styles.label}>CHEESE - FRESH FIXED WEIGHT</Text>
+                                    <Text style={styles.label}>CHEESE-FRESH FIXED WEIGHT</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
@@ -1599,7 +1716,7 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                                 <View>
-                                    <Text style={styles.label}>CHEESE - FROZEN</Text>
+                                    <Text style={styles.label}>CHEESE-FROZEN</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
@@ -1627,7 +1744,7 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                                 <View>
-                                    <Text style={styles.label}>CHOCOLATE/CHOCOLATE SUBSTITUTES - FIXED WEIGHT</Text>
+                                    <Text style={styles.label}>CHOCOLATE/CHOCOLATE SUBSTITUTES-FIXED WEIGHT</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
@@ -1641,7 +1758,7 @@ export default function HardCodedSurvey() {
                                     />
                                 </View>
                                 <View>
-                                    <Text style={styles.label}>COOKING/EDIBLE OILS - AMBIENT</Text>
+                                    <Text style={styles.label}>COOKING/EDIBLE OILS-AMBIENT</Text>
                                     <Dropdown
                                         placeholder="Select an option..."
                                         options={[
@@ -2061,75 +2178,75 @@ export default function HardCodedSurvey() {
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Picture 1 </Text>
-                                    <Button title='Take Picture' onPress={handleCameraLaunch3} color={'#0000FF'} />
-                                    {/* <View style={styles.DocumentPickers}>
+                                    {/* <Button title='Take Picture' onPress={handleCameraLaunch3} color={'#0000FF'} /> */}
+                                    <View style={styles.DocumentPickers}>
                                         <TouchableOpacity onPress={handleCameraLaunch3} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                             <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                 <AttachmentIcon name='camera' size={20} color='#fff' />
                                                 <Text style={{ color: 'white' }}>Take Picture</Text>
                                             </View>
                                         </TouchableOpacity>
-                                    </View> */}
+                                    </View>
                                     <Text>{ImgUrl1}</Text>
                                 </View>
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Picture 2 </Text>
-                                    <Button title='Take Picture' onPress={handleCameraLaunch4} color={'#0000FF'} />
-                                    {/* <View style={styles.DocumentPickers}>
+                                    {/* <Button title='Take Picture' onPress={handleCameraLaunch4} color={'#0000FF'} /> */}
+                                    <View style={styles.DocumentPickers}>
                                         <TouchableOpacity onPress={handleCameraLaunch4} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                             <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                 <AttachmentIcon name='camera' size={20} color='#fff' />
                                                 <Text style={{ color: 'white' }}>Take Picture</Text>
                                             </View>
                                         </TouchableOpacity>
-                                    </View> */}
+                                    </View>
                                     <Text>{ImgUrl2}</Text>
                                 </View>
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Picture 3 </Text>
-                                    <Button title='Take Picture' onPress={handleCameraLaunch5} color={'#0000FF'} />
-                                    {/* <View style={styles.DocumentPickers}>
+                                    {/* <Button title='Take Picture' onPress={handleCameraLaunch5} color={'#0000FF'} /> */}
+                                    <View style={styles.DocumentPickers}>
                                         <TouchableOpacity onPress={handleCameraLaunch5} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                             <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                 <AttachmentIcon name='camera' size={20} color='#fff' />
                                                 <Text style={{ color: 'white' }}>Take Picture</Text>
                                             </View>
                                         </TouchableOpacity>
-                                    </View> */}
+                                    </View>
                                     <Text>{ImgUrl3}</Text>
                                 </View>
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Picture 4 </Text>
-                                    <Button title='Take Picture' onPress={handleCameraLaunch6} color={'#0000FF'} />
-                                    {/* <View style={styles.DocumentPickers}>
+                                    {/* <Button title='Take Picture' onPress={handleCameraLaunch6} color={'#0000FF'} /> */}
+                                    <View style={styles.DocumentPickers}>
                                         <TouchableOpacity onPress={handleCameraLaunch6} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                             <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                 <AttachmentIcon name='camera' size={20} color='#fff' />
                                                 <Text style={{ color: 'white' }}>Take Picture</Text>
                                             </View>
                                         </TouchableOpacity>
-                                    </View> */}
+                                    </View>
                                     <Text>{ImgUrl4}</Text>
                                 </View>
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Picture 5 </Text>
-                                    <Button title='Take Picture' onPress={handleCameraLaunch7} color={'#0000FF'} />
-                                    {/* <View style={styles.DocumentPickers}>
+                                    {/* <Button title='Take Picture' onPress={handleCameraLaunch7} color={'#0000FF'} /> */}
+                                    <View style={styles.DocumentPickers}>
                                         <TouchableOpacity onPress={handleCameraLaunch7} style={{ backgroundColor: '#0000FF', width: '40%', borderRadius: 5 }}>
                                             <View style={{ flexDirection: 'row', width: '100%', margin: 6, gap: 10, }}>
                                                 <AttachmentIcon name='camera' size={20} color='#fff' />
                                                 <Text style={{ color: 'white' }}>Take Picture</Text>
                                             </View>
                                         </TouchableOpacity>
-                                    </View> */}
+                                    </View>
                                     <Text>{ImgUrl5}</Text>
                                 </View>
                             </View>
@@ -2153,6 +2270,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>Total Lines done till the time of Visit</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={totalNumberofLine}
                                         onChangeText={(text) => setTotalNumberofLines(text)}
@@ -2164,6 +2283,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>Total Lines Checked</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={totalLinechecked}
                                         onChangeText={(text) => setTotalLineChecked(text)}
@@ -2175,6 +2296,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>#Of Lines Counted Correctly </Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={LinesCountedCorrectly}
                                         onChangeText={(text) => setLinesCountedCorrectly(text)}
@@ -2211,6 +2334,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>Auditor Collected Purchase Lines</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={auditorCollectLinePurchase}
                                         onChangeText={(text) => setAuditorCollectedLinesPurchase(text)}
@@ -2222,6 +2347,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>Total Lines Checked</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={totalLinecheckedAuditor}
                                         onChangeText={(text) => setTotalLineCheckedAuditor(text)}
@@ -2233,6 +2360,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>#Of Lines Purchases Match with Auditor  Purchases</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={LinesPurchasesMatchwithAuditor}
                                         onChangeText={(text) => setLinesPurchasesMatchwithAuditor(text)}
@@ -2269,6 +2398,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>#of questions asked from auidtor</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={askquestionFromauditor}
                                         onChangeText={(text) => setAskQuestionfromAuditor(text)}
@@ -2280,6 +2411,8 @@ export default function HardCodedSurvey() {
                                     <Text style={styles.label}>(#of as which answers auditor delivered correctly)</Text>
                                     <TextInput
                                         placeholder='Enter'
+                                        inputMode='numeric'
+                                        keyboardType='number-pad'
                                         style={styles.input}
                                         value={auditorAnswerCorrectly}
                                         onChangeText={(text) => setAnswerAuditorCorrectly(text)}
@@ -2299,7 +2432,7 @@ export default function HardCodedSurvey() {
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
-                                    <Text style={styles.label}>Supervisor Feedback(Free Text)</Text>
+                                    <Text style={styles.label}>Supervisor Feedback</Text>
                                     <TextInput
                                         placeholder='Enter'
                                         style={styles.input}
@@ -2310,7 +2443,7 @@ export default function HardCodedSurvey() {
                             </View>
                             <View style={styles.questionContainer1}>
                                 <View>
-                                    <Text style={styles.label}>Auditor Comment (Free Text)</Text>
+                                    <Text style={styles.label}>Auditor Comment</Text>
                                     <TextInput
                                         placeholder='Enter'
                                         style={styles.input}
@@ -2420,4 +2553,8 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         fontWeight: 'bold'
     },
+    errorText: {
+        color: 'red',
+        marginTop: 5,
+      },
 })
