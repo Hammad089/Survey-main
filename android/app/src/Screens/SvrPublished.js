@@ -22,7 +22,7 @@ const SvrPublished = () => {
                 "Authorization": `Bearer ${token}`
               }
             })
-            console.log(response?.data);
+            
             setData(response?.data?.["Upload Survey"] || []);
           }
         } catch (error) {
@@ -46,8 +46,8 @@ const SvrPublished = () => {
                   <View style={{ flexDirection: 'row', columnGap: 10, borderColor: 'lightgrey' }}>
                     <View style={styles.circle}></View>
                     <View>
-                      <Text style={{ fontWeight: '900', fontSize: 20, }}>Supervisor Name:{item.supervisor_name}</Text>
-                      <Text style={{ fontWeight: '500', fontSize: 15, marginTop: 10 }}>Supervisor ID:{item.supervisor_id}</Text>
+                      <Text style={{ fontWeight: '900', fontSize: 20, }}>Supervisor Name:{item.supervisor_name === 'Not Availible' ? item.new_supervisor_name:item.supervisor_name }</Text>
+                      <Text style={{ fontWeight: '500', fontSize: 15, marginTop: 10 }}>Supervisor ID:{item.supervisor_id === 'Not Availible' ? item.new_supervisor_id : item.supervisor_id}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -63,7 +63,7 @@ const SvrPublished = () => {
                     <Text style={{ fontWeight: '700'}}>Shop SMS ID:{item.shop_sms}</Text>
                   </View>
                   <View>
-                    <Text style={{ fontWeight: '700'}}>Shop Type:{item.shop_type}</Text>
+                    <Text style={{ fontWeight: '700'}}>Shop Type:{item.shop_type === 'null' ? item.new_shoptype : item.shop_type}</Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, borderColor: 'lightgrey', marginBottom: 10 }}>

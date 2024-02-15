@@ -10,6 +10,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import { NavigationContainer } from '@react-navigation/native'
 import SvrDraft from './SvrDraft';
 import SvrPublished from './SvrPublished';
+import UploadPending from './UploadPending';
 const Tab = createMaterialTopTabNavigator();
 const DisplayDataAndImages = ({navigation}) => {
  
@@ -27,6 +28,13 @@ const DisplayDataAndImages = ({navigation}) => {
         <Tab.Screen
           name='Published'
           component={SvrPublished}
+          options={{
+            tabBarLabelStyle: { fontSize: 14, fontWeight: '500', color: 'green' }
+          }}
+        />
+        <Tab.Screen
+          name='pending'
+          component={UploadPending}
           options={{
             tabBarLabelStyle: { fontSize: 14, fontWeight: '500', color: 'green' }
           }}

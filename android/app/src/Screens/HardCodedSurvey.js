@@ -12,7 +12,8 @@ import {request, PERMISSIONS} from 'react-native-permissions';
 import { db, storage } from '../../../../firebase/config';
 import { addDoc, collection, } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL, uploadString } from "firebase/storage";
-
+import NetInfo from "@react-native-community/netinfo";
+import { addEventListener } from "@react-native-community/netinfo";
 const requestLocationPermission = async () => {
     try {
         const granted = await PermissionsAndroid.request(
@@ -64,16 +65,16 @@ export default function HardCodedSurvey() {
     const [ControlType, setControlType] = React.useState();
     const [EnterControlledType, setEnterControlledType] = useState();
     const [lineCheckofStock, setLineCheckofStock] = React.useState();
-    const [totalNumberofLine, setTotalNumberofLines] = React.useState();
-    const [totalLinechecked, setTotalLineChecked] = React.useState();
-    const [LinesCountedCorrectly, setLinesCountedCorrectly] = React.useState();
-    const [LineCheckedofPurchases, setLineCheckofPurchases] = React.useState();
-    const [auditorCollectLinePurchase, setAuditorCollectedLinesPurchase] = React.useState();
-    const [totalLinecheckedAuditor, setTotalLineCheckedAuditor] = React.useState();
-    const [LinesPurchasesMatchwithAuditor, setLinesPurchasesMatchwithAuditor] = React.useState();
+    const [totalNumberofLine, setTotalNumberofLines] = React.useState(0);
+    const [totalLinechecked, setTotalLineChecked] = React.useState(0);
+    const [LinesCountedCorrectly, setLinesCountedCorrectly] = React.useState(0);
+    const [LineCheckedofPurchases, setLineCheckofPurchases] = React.useState(0);
+    const [auditorCollectLinePurchase, setAuditorCollectedLinesPurchase] = React.useState(0);
+    const [totalLinecheckedAuditor, setTotalLineCheckedAuditor] = React.useState(0);
+    const [LinesPurchasesMatchwithAuditor, setLinesPurchasesMatchwithAuditor] = React.useState(0);
     const [supervisorAskQuestion, setSupervisorAskQuestion] = useState();
-    const [askquestionFromauditor, setAskQuestionfromAuditor] = useState();
-    const [auditorAnswerCorrectly, setAnswerAuditorCorrectly] = useState();
+    const [askquestionFromauditor, setAskQuestionfromAuditor] = useState(0);
+    const [auditorAnswerCorrectly, setAnswerAuditorCorrectly] = useState(0);
     const [supervisorFeedback, setSupervisorFeedback] = useState();
     const [BabyFormula, setBabyFormula] = useState();
     const [BabyHygeine, setBabyHygeine] = useState();
@@ -241,7 +242,7 @@ export default function HardCodedSurvey() {
                 ImgUrl4,
                 ImgUrl5
             ].filter(url => url);
-
+            console.log('images in draft', imageUrls)
             const existingDataString = await AsyncStorage.getItem('dataAndImages');
         let existingData = existingDataString ? JSON.parse(existingDataString) : { surveys: [] };
         console.log('filteredSurveyData:', filteredSurveyData);
@@ -255,6 +256,7 @@ export default function HardCodedSurvey() {
             surveyData: filteredSurveyData,
             images: imageUrls,
         };
+        console.log('images in data to store',dataToStore.images)
         // Append the new survey data to the existing surveys
         existingData.surveys.push(dataToStore);
         // Store the updated data in AsyncStorage
@@ -430,12 +432,14 @@ export default function HardCodedSurvey() {
               if (isAnyFieldEmpty) {
                 Alert.alert('Please fill in all required fields');
                 return;
-               
               }
+            
+             
             const token = await AsyncStorage.getItem('token');
             setLoading(false);
             console.log('token in svr survey', token)
             const formdata = new FormData();
+
             formdata.append('supervisor_name', supervisorName);
             formdata.append('new_supervisor_name',newsupervisorName);
             formdata.append('supervisor_id', supervisorCDARID);
@@ -547,18 +551,30 @@ export default function HardCodedSurvey() {
                 Alert.alert('Inside picture and GPS Location picture are mandatory when ShopProfile and GPS Location are "No". Please take pictures before submitting.');
                 return;
             }
-            const response = await axios.post('https://coralr.com/api/svr-store', formdata, {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
-            console.log(response.data);
-            setSurveyId(response.data.survey_id)
-            resetForm();
-            console.log('form data ', formdata)
-
+            const isConnected = await NetInfo.fetch().then(state => state.isConnected);
+            console.log('net connected',isConnected)
+            if (isConnected) {
+                // Device has internet, proceed with server upload
+                const response = await axios.post('https://coralr.com/api/svr-store', formdata, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data',
+                    }
+                });
+                console.log(response.data);
+                setSurveyId(response.data.survey_id);
+                resetForm();
+                console.log('Form data sent to server:', formdata);
+                setLoading(false);
+            } else {
+                // No internet, store data in AsyncStorage
+                await AsyncStorage.setItem('pendingFormData', JSON.stringify(formdata));
+                console.log('Form data stored locally:', formdata);
+                Alert.alert('Data stored locally. It will be uploaded when the network is available.');
+                setLoading(false);
+            }
         } catch (error) {
+            setLoading(false);
             if (axios.isAxiosError(error)) {
                 console.error('Axios Error:', error.message);
             } else {
@@ -648,10 +664,19 @@ export default function HardCodedSurvey() {
             uploadImage();
         }
     }, [surveyId]);
-
-    const result1 = (LinesCountedCorrectly / totalLinechecked * 100).toFixed(0);
-    const result2 = (LinesPurchasesMatchwithAuditor / totalLinecheckedAuditor * 100).toFixed(0);
-    const result3 = (auditorAnswerCorrectly / askquestionFromauditor * 100).toFixed(0);
+    
+    let result1 = (LinesCountedCorrectly / totalLinechecked * 100).toFixed();
+    if(isNaN(result1)) {
+        result1 = 0
+    }
+    let result2 = (LinesPurchasesMatchwithAuditor / totalLinecheckedAuditor * 100).toFixed();
+    if(isNaN(result2)) {
+        result2 = 0
+    }
+    let result3 = (auditorAnswerCorrectly / askquestionFromauditor * 100).toFixed() ;
+        if (isNaN(result3)) {
+            result3 = 0;
+        }
     const supervisorCDARIDMap = {
         'Aziz Ahmed': '935301',
         'Muhammad Hassan': '761921',
@@ -660,7 +685,8 @@ export default function HardCodedSurvey() {
         'Naveed Mehboob': '754481',
         'Khurram Raza': '199733',
         'Muhammad Noman': '750165',
-        'Muhammad Hamid': '935281'
+        'Muhammad Hamid': '935281',
+        'Not Availible' :'Not Availible'
     };
     const auditorCDARMap = {
         "Farhan Syed": "746101",
@@ -701,6 +727,7 @@ export default function HardCodedSurvey() {
         "Eisha kanwal": "746061",
         "Irfan Abbas": "927501",
         "Khurram Shahzad": "918761",
+        "Not Availible":"Not Availible"
     }
 
 
@@ -963,74 +990,81 @@ const requestForPermissionCamera = () => {
                             <View style={styles.container}>
                                 <Text style={{ textAlign: 'center', fontSize: 25, fontWeight: '700' }}>Audit Survey Form</Text>
                             </View>
-                            <View style={styles.questionContainer}>
-                                <View>
-                                    <Text style={styles.label}>Name of Supervisor</Text>
-                                    <Dropdown
+                                <View style={styles.questionContainer}>
+                                    <View>
+                                        <Text style={styles.label}>Name of Supervisor</Text>
+                                        <Dropdown
+                                            placeholder="Select an option..."
+                                            options={[
+                                                { label: 'Aziz Ahmed', value: 'Aziz Ahmed' },
+                                                { label: 'Muhammad Hassan', value: 'Muhammad Hassan' },
+                                                { label: 'Imran Khalil', value: 'Imran Khalil' },
+                                                { label: 'Tariq Mahmood', value: 'Tariq Mahmood' },
+                                                { label: 'Naveed Mehboob', value: 'Naveed Mehboob' },
+                                                { label: 'Khurram Raza', value: 'Khurram Raza' },
+                                                { label: 'Muhammad Noman', value: 'Muhammad Noman' },
+                                                { label: 'Muhammad Hamid', value: 'Muhammad Hamid' },
+                                                { label: 'Not Availible', value: 'Not Availible' },
+                                            ]}
+                                            selectedValue={supervisorName}
+                                            onValueChange={handleSupervisorNameAndID}
+                                            primaryColor={'green'}
+                                        />
+                                        {
+                                            supervisorName === 'Not Availible' ? (
+                                                <View>
+                                                    <Text style={styles.label}>Supervisor Name</Text>
+                                                    <TextInput
+                                                        placeholder='Enter Name'
+                                                        style={styles.input}
+                                                        value={newsupervisorName}
+                                                        onChangeText={(text) => {
+                                                            setNewSupervisiorName(text);
+                                                        }}
+                                                    />
+                                                    </View>
+                                                ) : null}
+                                                 </View>
+                                                <Text style={styles.label}>Supervisor CDAR ID</Text>
+                                                <TextInput
+                                                placeholder='Supervisor CDAR ID'
+                                                style={styles.input}
+                                                value={supervisorCDARID}
+                                                onChangeText={(text) => (value) => setsupervisorCDARID(value)(text)}
+                                                editable = {false}
+                                                />
+                                    {/* <Dropdown
                                         placeholder="Select an option..."
                                         options={[
-                                            { label: 'Aziz Ahmed', value: 'Aziz Ahmed' },
-                                            { label: 'Muhammad Hassan', value: 'Muhammad Hassan' },
-                                            { label: 'Imran Khalil', value: 'Imran Khalil' },
-                                            { label: 'Tariq Mahmood', value: 'Tariq Mahmood' },
-                                            { label: 'Naveed Mehboob', value: 'Naveed Mehboob' },
-                                            { label: 'Khurram Raza', value: 'Khurram Raza' },
-                                            { label: 'Muhammad Noman', value: 'Muhammad Noman' },
-                                            { label: 'Muhammad Hamid', value: 'Muhammad Hamid' },
+                                            { label: '935301', value: '935301' },
+                                            { label: '761921', value: '761921' },
+                                            { label: '694423', value: '694423' },
+                                            { label: '694466', value: '694466' },
+                                            { label: '754481', value: '754481' },
+                                            { label: '199733', value: '199733' },
+                                            { label: '750165', value: '750165' },
+                                            { label: '935281', value: '935281' },
                                             { label: 'Not Availible', value: 'Not Availible' },
                                         ]}
-                                        selectedValue={supervisorName}
-                                        onValueChange={handleSupervisorNameAndID}
+                                        selectedValue={supervisorCDARID}
+                                        onValueChange={(value) => setsupervisorCDARID(value)}
                                         primaryColor={'green'}
-                                    />
+                                        
+                                    /> */}
                                     {
-                                        supervisorName === 'Not Availible' ? (
+                                        supervisorCDARID === 'Not Availible' ? (
                                             <View>
-                                                <Text>Supervisor Name</Text>
+                                                <Text style={styles.label}> New Supervisor CDAR ID</Text>
                                                 <TextInput
-                                                    placeholder='Enter Name'
+                                                    placeholder='Supervisor CDAR ID'
                                                     style={styles.input}
-                                                    value={newsupervisorName}
-                                                    onChangeText={(text) => {
-                                                        setNewSupervisiorName(text);
-                                                      }}
+                                                    value={newSupervisorCDARID}
+                                                    onChangeText={(text) => setNewSupervisorCDARID(text)}
                                                 />
-                                                </View>
-                                            ) : null}
-                        
+                                            </View>
+                                        ) : null
+                                    }
                                 </View>
-                                <Text style={styles.label}>Supervisor CDAR ID</Text>
-                                <Dropdown
-                                    placeholder="Select an option..."
-                                    options={[
-                                        { label: '935301', value: '935301' },
-                                        { label: '761921', value: '761921' },
-                                        { label: '694423', value: '694423' },
-                                        { label: '694466', value: '694466' },
-                                        { label: '754481', value: '754481' },
-                                        { label: '199733', value: '199733' },
-                                        { label: '750165', value: '750165' },
-                                        { label: '935281', value: '935281' },
-                                        { label: 'Not Availible', value: 'Not Availible' },
-                                    ]}
-                                    selectedValue={supervisorCDARID}
-                                    onValueChange={(value) => setsupervisorCDARID(value)}
-                                    primaryColor={'green'}
-                                />
-                                {
-                                    supervisorCDARID === 'Not Availible' ? (
-                                        <View>
-                                            <Text>Supervisor CDAR ID</Text>
-                                            <TextInput
-                                                placeholder='Enter Supervisor CDAR ID'
-                                                style={styles.input}
-                                                value={newSupervisorCDARID}
-                                                onChangeText={(text) => setNewSupervisorCDARID(text)}
-                                            />
-                                        </View>
-                                    ) : null
-                                }
-                            </View>
                             <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Auditor Name</Text>
@@ -1084,7 +1118,7 @@ const requestForPermissionCamera = () => {
                                     {
                                         auditorName === 'Not Availible' ? (
                                             <View>
-                                                <Text>Auditor Name</Text>
+                                                <Text style={styles.label}>New Auditor Name</Text>
                                                 <TextInput
                                                     placeholder='Enter Auditor Name'
                                                     style={styles.input}
@@ -1096,7 +1130,14 @@ const requestForPermissionCamera = () => {
                                     }
                                 </View>
                                 <Text style={styles.label}>Auditor CDAR ID</Text>
-                                <Dropdown
+                                <TextInput
+                                 placeholder='Enter Auditor Name'
+                                 style={styles.input}
+                                 value={auditorCDAR}
+                                 onChangeText={(value) => setAuditorCDAR(value)}
+                                 editable={false}
+                                 />
+                                {/* <Dropdown
                                     placeholder="Select an option..."
                                     options={[
                                         { label: "746101", value: "746101" },
@@ -1143,11 +1184,11 @@ const requestForPermissionCamera = () => {
                                     selectedValue={auditorCDAR}
                                     onValueChange={(value) => setAuditorCDAR(value)}
                                     primaryColor={'green'}
-                                />
+                                /> */}
                                 {
                                     auditorCDAR === 'Not Availible' ? (
                                         <View>
-                                            <Text>Auditor CDAR ID</Text>
+                                            <Text style={styles.label}> New Auditor CDAR ID</Text>
                                             <TextInput
                                                 placeholder='Enter Auditor CDAR ID'
                                                 style={styles.input}
@@ -1292,7 +1333,14 @@ const requestForPermissionCamera = () => {
                                 <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Shop Type (Office Record)</Text>
-                                    <Dropdown
+                                    <TextInput 
+                                    placeholder='Shop type '
+                                    style={styles.input}
+                                    value={selectedShopType}
+                                    onChangeText={(value) => setSelectedShopType(value)}
+                                    editable={false}
+                                    />
+                                    {/* <Dropdown
                                         placeholder="Select an option..."
                                         options={[
                                             { label: 'OLA', value: 'OLA' },
@@ -1310,7 +1358,7 @@ const requestForPermissionCamera = () => {
                                         selectedValue={selectedShopType}
                                         onValueChange={(value) => setSelectedShopType(value)}
                                         primaryColor={'green'}
-                                    />
+                                    /> */}
                                 </View>
                             </View>
                             )
@@ -1320,13 +1368,20 @@ const requestForPermissionCamera = () => {
                                     <View style={styles.questionContainer1}>
                                 <View>
                                     <Text style={styles.label}>Shop Name (Office Record)</Text>
-                                    <Dropdown
+                                    <TextInput 
+                                    placeholder='Shop Name '
+                                    style={styles.input}
+                                    value={ShopName}
+                                    onChangeText={(value) => setShopName(value)}
+                                    editable={false}
+                                    />
+                                    {/* <Dropdown
                                         placeholder="Select an option..."
                                         options={shops}
                                         selectedValue={ShopName}
                                         onValueChange={(value) => setShopName(value)}
                                         primaryColor={'green'}
-                                    />
+                                    /> */}
                                 </View>
                             </View>
                                 )
@@ -2310,7 +2365,7 @@ const requestForPermissionCamera = () => {
                                     <TextInput
                                         placeholder='Enter'
                                         style={styles.input}
-                                        value={result1}
+                                        value={result1.toString()}
                                     />
                                 </View>
                             </View>
@@ -2374,7 +2429,7 @@ const requestForPermissionCamera = () => {
                                     <TextInput
                                         placeholder='Enter'
                                         style={styles.input}
-                                        value={result2}
+                                        value={result2.toString()}
                                     />
                                 </View>
                             </View>
@@ -2426,7 +2481,7 @@ const requestForPermissionCamera = () => {
                                     <TextInput
                                         placeholder='Enter'
                                         style={styles.input}
-                                        value={result3}
+                                        value={result3.toString()}
                                     />
                                 </View>
                             </View>
@@ -2452,7 +2507,15 @@ const requestForPermissionCamera = () => {
                                     />
                                 </View>
                             </View>
-                            {/* <View style={{}}>
+                            <View style={{flexDirection:'row',justifyContent:'space-between',gap:10,borderRadius:15,margin:10,marginBottom:5}}>
+                              <TouchableOpacity style={{width:'45%',height:50,backgroundColor:'#1e76ba',borderRadius:10}} onPress={uploadDataSvr}>
+                                    <Text style={{textAlign:'center',marginTop:10,color:'white',fontSize:18,fontWeight:'500'}}>Submit</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={{width:'45%',height:50,backgroundColor:'green',borderRadius:10}} onPress={storeDataAndImages}>
+                                    <Text style={{textAlign:'center',marginTop:10,color:'white',fontSize:18,fontWeight:'500'}}>Save as Draft</Text>
+                                </TouchableOpacity>
+                            </View>
+                            {/* <View style={{width:'100%',flexDirection:'row',justifyContent:'space-between',marginTop:10,margin:10,marginLeft:10}}>
                             <Button
                                 title='Submit Form'
                                 color='#1e76ba'
@@ -2461,7 +2524,7 @@ const requestForPermissionCamera = () => {
                             <Button 
                              title='Save as Draft'
                              color='green'
-                             onPress={uploadSurvey}
+                             onPress={storeDataAndImages}
                             />
                             </View> */}
 
@@ -2471,7 +2534,7 @@ const requestForPermissionCamera = () => {
 
                 }
             </ScrollView >
-            <View style={{ width: '100%', gap: 10 }}>
+            {/* <View style={{ width: '100%', gap: 10 }}>
                 <Button
                     title='Submit Form'
                     color='#1e76ba'
@@ -2485,7 +2548,7 @@ const requestForPermissionCamera = () => {
                     />
                 </View>
 
-            </View>
+            </View> */}
         </>
     )
 }
